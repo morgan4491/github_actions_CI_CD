@@ -1,30 +1,23 @@
-import db from '../config/connection.js';
-import { Question } from '../models/index.js';
-import cleanDB from './cleanDb.js';
-import fs from 'fs';
-import path from 'path';
+import db from "../config/connection.js";
+import Question from "../models/Question.js";
+import cleanDB from "./cleanDb.js";
 import { fileURLToPath } from 'url';
+import { dirname, join } from 'path';
+import fs from 'fs/promises';
 
 const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+const __dirname = dirname(__filename);
 
-const pythonQuestionsPath = path.resolve(__dirname, './pythonQuestions.json');
-const questionData = JSON.parse(fs.readFileSync(pythonQuestionsPath, 'utf-8'));
 
-async function seedDatabase() {
-  try {
-    await db.openUri(process.env.MONGODB_URI || 'mongodb://localhost:27017/yourdbname');
-    await cleanDB();
+const rawData = await fs.readFile(join(__dirname, './pythonQuestions.json'), 'utf8');
 
-    // bulk create each model
-    await Question.insertMany(questionData);
 
-    console.log('Seeding completed successfully!');
-    process.exit(0);
-  } catch (error) {
-    console.error('Error seeding database:', error);
-    process.exit(1);
-  }
-}
+db.once('open', async () => {
+  
+  await cleanDB();
 
-seedDatabase();
+  await Question.insertMany(JSON.parse(rawData));
+
+  console.log('Questions seeded!');
+  process.exit(0);
+});
